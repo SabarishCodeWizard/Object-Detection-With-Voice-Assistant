@@ -2,6 +2,10 @@ import cv2
 import numpy as np
 import pyttsx3
 import threading
+from PIL import Image
+import tensorflow as tf
+import tensorflow_hub as hub
+import face_recognition
 
 # Load YOLO
 net = cv2.dnn.readNet("yolov3.weights", "yolov3.cfg")
@@ -14,28 +18,22 @@ layer_names = net.getUnconnectedOutLayersNames()
 # Initialize Text-to-Speech engine
 engine = pyttsx3.init()
 
-# Dictionary to store the state of detected objects
-detected_objects = {}
-
-# Function to speak text
 def speak(text):
     engine.say(text)
     engine.runAndWait()
 
-# Placeholder functions for detailed attribute detection
-def detect_skin_color(frame, x, y, w, h):
-    # Implement skin color detection logic
-    return "light skin"
+# Load a pre-trained TensorFlow model from TensorFlow Hub
+model = hub.load("https://tfhub.dev/google/imagenet/inception_v3/feature_vector/4")
 
-def detect_hair_color(frame, x, y, w, h):
-    # Implement hair color detection logic
-    return "brown hair"
+def classify_image(image):
+    image = Image.fromarray(image)
+    image = image.resize((299, 299))
+    image = np.array(image) / 255.0
+    image = np.expand_dims(image, axis=0)
+    features = model(image)
+    # Implement further processing to get labels based on features
+    return features
 
-def detect_accessories(frame, x, y, w, h):
-    # Implement accessory detection logic
-    return "wearing glasses"
-
-# Function to handle object detection and attributes
 def perform_object_detection(frame):
     height, width, channels = frame.shape
 
@@ -44,6 +42,7 @@ def perform_object_detection(frame):
     net.setInput(blob)
     outs = net.forward(layer_names)
 
+    # Process YOLO output
     class_ids = []
     confidences = []
     boxes = []
@@ -53,11 +52,13 @@ def perform_object_detection(frame):
             class_id = np.argmax(scores)
             confidence = scores[class_id]
             if confidence > 0.5:
+                # Object detected
                 center_x = int(detection[0] * width)
                 center_y = int(detection[1] * height)
                 w = int(detection[2] * width)
                 h = int(detection[3] * height)
 
+                # Rectangle coordinates
                 x = int(center_x - w / 2)
                 y = int(center_y - h / 2)
 
@@ -65,10 +66,10 @@ def perform_object_detection(frame):
                 confidences.append(float(confidence))
                 class_ids.append(class_id)
 
+    # Non-maximum suppression to remove duplicate detections
     indexes = cv2.dnn.NMSBoxes(boxes, confidences, 0.5, 0.4)
 
-    current_detected_objects = set()
-
+    # Draw bounding boxes and speak detected objects
     for i in range(len(boxes)):
         if i in indexes:
             x, y, w, h = boxes[i]
@@ -78,29 +79,27 @@ def perform_object_detection(frame):
             cv2.rectangle(frame, (x, y), (x + w, y + h), color, 2)
             cv2.putText(frame, f"{label} {confidence:.2f}", (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
 
-            if label not in detected_objects or detected_objects[label] == False:
-                if label == 'person':
-                    speak("A person is detected.")
-                    # Detailed responses for people
-                    skin_color = detect_skin_color(frame, x, y, w, h)
-                    hair_color = detect_hair_color(frame, x, y, w, h)
-                    accessories = detect_accessories(frame, x, y, w, h)
-                    speak(f"The person has {skin_color} and {hair_color}, and is {accessories}.")
-                    detected_objects['person'] = True
-                elif label == 'car':
-                    speak("A car is detected.")
-                    detected_objects['car'] = True
-                elif label == 'dog':
-                    speak("A dog is detected. How adorable!")
-                    detected_objects['dog'] = True
-                # Add more conditions for other detected objects as needed
-            else:
-                current_detected_objects.add(label)
-
-    # Reset the state of non-detected objects
-    for obj in detected_objects:
-        if obj not in current_detected_objects:
-            detected_objects[obj] = False
+            # Customize TTS messages based on the detected object
+            tts_message = f"A {label} is detected."
+            if label == 'person':
+                # Detect faces and recognize attributes
+                roi = frame[y:y+h, x:x+w]
+                rgb_roi = cv2.cvtColor(roi, cv2.COLOR_BGR2RGB)
+                faces = face_recognition.face_locations(rgb_roi)
+                
+                if faces:
+                    for face in faces:
+                        top, right, bottom, left = face
+                        cv2.rectangle(frame, (x + left, y + top), (x + right, y + bottom), (255, 0, 0), 2)
+                        tts_message = "A person with detected facial attributes is recognized."
+                        # Additional attribute classification
+                        attributes = classify_image(rgb_roi)
+                        # Placeholder for additional attribute processing
+                        # For real implementation, process 'attributes' to generate specific messages
+                        if "smile" in attributes:  # Replace with actual attribute check
+                            tts_message += " They appear to be smiling."
+                        
+            threading.Thread(target=speak, args=(tts_message,)).start()
 
     return frame
 
@@ -109,6 +108,9 @@ cap = cv2.VideoCapture(0)
 
 while True:
     ret, frame = cap.read()
+
+    if not ret:
+        break
 
     # Perform object detection and display the result
     result_frame = perform_object_detection(frame)
