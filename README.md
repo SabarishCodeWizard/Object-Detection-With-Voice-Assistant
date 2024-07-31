@@ -1,31 +1,35 @@
 # ObjectDetectionVoiceFeedback
+
 "Real-time object detection with YOLO and Text-to-Speech integration for webcam feed in Python."
 
-Structure the project directory:
+## Project Directory Structure:
+
+```
 project_directory/
 |-- your_script.py
 |-- yolov3.weights
 |-- yolov3.cfg
 |-- coco.names
+```
 
+## YOLO GitHub Repository:
 
-
-YOLO GitHub Repository:
 YOLO is open-source, and you can find the official repository on GitHub. The repository URL is: https://github.com/AlexeyAB/darknet
 
-Download YOLOv3 Weights (Pre-trained):
+## Download YOLOv3 Weights (Pre-trained):
+
 YOLOv3 weights file is relatively large, and it's commonly available for download separately from the configuration file. You can find the pre-trained YOLOv3 weights at the following link: https://pjreddie.com/media/files/yolov3.weights
 
-Download YOLOv3 Configuration File (cfg):
+## Download YOLOv3 Configuration File (cfg):
+
 The configuration file (.cfg) contains the architecture and settings of the YOLOv3 model. You can find the YOLOv3.cfg file in the official repository under the cfg directory: https://github.com/AlexeyAB/darknet/tree/master/cfg
 
-Download COCO Names File (Optional):
+## Download COCO Names File (Optional):
+
 The COCO names file contains the names of the classes that the YOLO model can detect. You can find it in the official repository under the data directory: https://github.com/AlexeyAB/darknet/blob/master/data/coco.names
 
 
-Sure, here's an updated README file for your project, including the new UI features:
 
----
 
 # UI Intregration for ObjectDetectionVoiceFeedback
 
